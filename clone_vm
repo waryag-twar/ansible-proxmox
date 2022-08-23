@@ -1,0 +1,55 @@
+---
+- name: setup VM
+  hosts: 10.10.10.2
+  vars_files:
+#    - clone-mikrotik.yml
+#    - clone-windows.yml
+    - clone-ubuntu.yml
+  tasks:
+    - name: Clone VMs
+      proxmox_kvm: 
+        node: "{{ node }}"
+        name: "{{ item.value.name }}"
+        newid: "{{ item.value.vmid }}"
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        api_host: "{{ api_host }}"
+        clone: "{{ clone_vm }}"
+        full: yes
+        net: '{{ item.value.net | default(defaults.net) }}'
+      loop: "{{ lookup('dict', vms, wantlist=True) }}"
+
+      
+
+    - name: Set IP addresses
+      command: "qm set {{ item.value.vmid }}  --ipconfig0 ip={{ item.value.ipaddress }}"
+      loop: "{{ lookup('dict', vms, wantlist=True) }}"
+    
+    - name: Update VMs
+      proxmox_kvm:
+        api_host:     "{{ api_host }}"
+        api_user:     "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        cores:        "{{ item.value.cores }}"
+        sockets:      "{{ item.value.sockets }}"
+        memory:       "{{ item.value.memory }}"
+        cpu:          "{{ item.value.cpu }}"
+        numa_enabled: "{{ item.value.numa_enabled }}"
+        machine:      "{{ item.value.machine }}"
+        vmid:         "{{ item.value.vmid }}"
+        node:         "{{ node }}"
+        name:         "{{ item.value.name }}"
+#        net:          '{{ item.value.net | default(defaults.net) }}'
+        virtio:       "{{ item.value.virtio }}"        
+        update:       yes
+      loop: "{{ lookup('dict', vms, wantlist=True) }}"
+
+    - name: Start VMs
+      proxmox_kvm:
+        api_host:     "{{ api_host }}"
+        api_user:     "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        vmid:         "{{ item.value.vmid }}"
+        node:         "{{ node }}"
+        state:        started
+      loop: "{{ lookup('dict', vms, wantlist=True) }}"
